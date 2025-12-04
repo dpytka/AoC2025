@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Rolls
+  EMPTY = '.'
   MARKER = '@'
   REMOVED = 'x'
   MAX_ADJACENT_COUNT = 5
@@ -19,6 +20,14 @@ class Rolls
       end
     end
     removed_count
+  end
+
+  def reset_removed
+    grid.each_with_index do |row, row_index|
+      row.each_with_index do |cell, col_index|
+        grid[row_index][col_index] = EMPTY if cell == REMOVED
+      end
+    end
   end
 
   private
@@ -51,5 +60,11 @@ class Rolls
   end
 end
 
-# Run the calculation and print the result
-puts Rolls.new('input.txt').count_removed_rolls
+rolls = Rolls.new('input.txt')
+sum = 0
+while (x = rolls.count_removed_rolls).positive?
+  sum += x
+  rolls.reset_removed
+end
+
+p sum
