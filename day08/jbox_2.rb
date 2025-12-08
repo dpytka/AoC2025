@@ -1,28 +1,20 @@
 # frozen_string_literal: true
 
+require 'set'
+
 def dist(point_a, point_b)
   point_a.zip(point_b).sum { |a, b| (a - b)**2 }
 end
 
-jbox = File.readlines('input.txt', chomp: true).map do |line|
-  line.split(',').map(&:to_i)
-end
+jbox = File.readlines('input.txt', chomp: true)
+                .map { |line| line.split(',').map(&:to_i) }
 
-jbox_pairs = []
-(0...jbox.size).each do |i|
-  ((i + 1)...jbox.size).each do |j|
-    jbox_pairs << [i, j]
-  end
-end
-
-jbox_pairs.each do |pair|
-  pair << dist(jbox[pair[0]], jbox[pair[1]])
-end.sort_by! { |pair| pair[2] }
+jbox_pairs = (0...jbox.size).to_a.combination(2)
+                                .map { |i, j| [i, j, dist(jbox[i], jbox[j])] }
+                                .sort_by { |pair| pair[2] }
 
 circuits = jbox.size.times.map { |i| Set.new([i]) }
-jbox_pairs.map { |e| e[..-2] }.each do |pair|
-  point_a, point_b = pair
-
+jbox_pairs.map { |pair| pair.take(2) }.each do |point_a, point_b|
   circuit_a = circuits.find { |circuit| circuit.include?(point_a) }
   circuit_b = circuits.find { |circuit| circuit.include?(point_b) }
 
@@ -32,6 +24,7 @@ jbox_pairs.map { |e| e[..-2] }.each do |pair|
   circuits.delete(circuit_b)
 
   if circuits.size == 1
-    puts "result: #{jbox[pair[0]][0]}*#{jbox[pair[1]][0]}=#{jbox[pair[0]][0]*jbox[pair[1]][0]}"
+    result = jbox[point_a][0] * jbox[point_b][0]
+    puts "result: #{jbox[point_a][0]}*#{jbox[point_b][0]}=#{result}"
   end
 end
