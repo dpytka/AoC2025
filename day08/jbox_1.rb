@@ -1,53 +1,107 @@
 # frozen_string_literal: true
-def dist(a, b)
-  (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2
+
+require 'set'
+
+# Calculate squared Euclidean distance between two 3D points
+def squared_distance(point_a, point_b)
+  point_a.zip(point_b).sum { |a, b| (a - b)**2 }
 end
 
-jbox = File.readlines('input_test.txt', chomp: true).map do |line|
-  line.split(',').map(&:to_i)
+# Read and parse input data
+def read_jbox_data(filename)
+  File.readlines(filename, chomp: true)
+      .map { |line| line.split(',').map(&:to_i) }
 end
 
-jbox_pairs = []
-(0...jbox.size).each do |i|
-  ((i + 1)...jbox.size).each do |j|
-    jbox_pairs << [i, j]
-  end
+# Generate all possible pairs with their distances
+def generate_pairs_with_distances(jbox_data)
+  (0...jbox_data.size).to_a.combination(2).map do |i, j|
+    [i, j, squared_distance(jbox_data[i], jbox_data[j])]
+  end.sort_by { |pair| pair[2] }
 end
 
-jbox_pairs.each do |pair|
-  pair << dist(jbox[pair[0]], jbox[pair[1]])
-end.sort_by! { |pair| pair[2] }
-
-circuits = []
-(0..9).each do |i|
-  found = false
-  jbox_pair = jbox_pairs[i][..-2]
-  circuits_idx = []
-  circuits.each_with_index do |circuit, i|
-    if circuit.include?(jbox_pair[0]) || circuit.include?(jbox_pair[1])
-      circuit.merge(jbox_pair)
-      circuits_idx << i
-      found = true
+# Check if a pair connects to existing circuits
+def find_connecting_circuits(pair, circuits)
+  pair_set = pair.to_set
+  connecting_circuits = []
+  
+  circuits.each_with_index do |circuit, index|
+    next if circuit.empty?
+    
+    if (pair_set - circuit).empty?
+      # Both points already in this circuit
+      return :already_connected, []
+    elsif (pair_set - circuit).size == 1
+      # One point connects to this circuit
+      connecting_circuits << index
     end
   end
-
-  if found
-    sett = Set.new
-    circuits_idx.each do |i|
-      sett.merge(circuits[i])
-    end
-    circuits_idx.each do |i|
-      circuits.delete_at(i)
-    end
-
-    sett.merge(jbox_pair)
-
-    circuits << sett
-  else
-    circuits << jbox_pairs[i][..-2].to_set
-  end
+  
+  return connecting_circuits.empty? ? :no_connection : :merge_circuits, connecting_circuits
 end
 
-# jbox_pairs.each { |pair| p pair }
+# Merge circuits with a new pair
+def merge_circuits(circuits, circuit_indices, pair)
+  new_circuit = Set.new(pair)
+  
+  circuit_indices.each do |index|
+    new_circuit.merge(circuits[index])
+    circuits[index] = Set.new
+  end
+  
+  circuits << new_circuit
+  circuits.reject!(&:empty?)
+end
 
-p circuits.sort_by(&:size).reverse.take(3).map(&:size).reduce(:*)
+# Build circuits by connecting pairs
+def build_circuits(pairs, max_connections)
+  circuits = []
+  connections_made = 0
+  
+  pairs.each do |pair|
+    pair_indices = pair[0..1]
+    connection_type, circuit_indices = find_connecting_circuits(pair_indices, circuits)
+    
+    case connection_type
+    when :already_connected
+      next
+    when :no_connection
+      circuits << Set.new(pair_indices)
+    when :merge_circuits
+      merge_circuits(circuits, circuit_indices, pair_indices)
+    end
+    
+    connections_made += 1
+    break if connections_made >= max_connections
+  end
+  
+  circuits
+end
+
+# Calculate the result based on the three largest circuits
+def calculate_result(circuits)
+  largest_circuits = circuits.sort_by(&:size).reverse.take(3)
+  largest_circuits.map(&:size).reduce(:*)
+end
+
+# Main execution
+def main
+  max_connections = 10
+  input_file = 'input_test.txt'
+  
+  jbox_data = read_jbox_data(input_file)
+  pairs_with_distances = generate_pairs_with_distances(jbox_data)
+  circuits = build_circuits(pairs_with_distances, max_connections)
+  
+  result = calculate_result(circuits)
+  
+  puts "Wynik to: #{result}"
+  
+  # Display the three largest circuits for debugging
+  largest_circuits = circuits.sort_by(&:size).reverse.take(3)
+  puts "Three largest circuits: #{largest_circuits}"
+  puts "Their sizes: #{largest_circuits.map(&:size)}"
+end
+
+# Run the program
+main if __FILE__ == $0
