@@ -8,9 +8,9 @@ jbox = File.readlines('input_test.txt', chomp: true).map do |line|
 end
 
 jbox_pairs = []
-(0...jbox.size).to_a.product((0...jbox.size).to_a).each do |a, b|
-  if a != b && (not jbox_pairs.include?([a, b].sort))
-    jbox_pairs << [a, b].sort
+(0...jbox.size).each do |i|
+  ((i + 1)...jbox.size).each do |j|
+    jbox_pairs << [i, j]
   end
 end
 
